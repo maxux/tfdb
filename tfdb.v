@@ -39,15 +39,39 @@ fn (mut t TFDBSrv) command_groupdefine(input resp.RValue, mut _ redisserver.Redi
 		return resp.get_redis_array(input)[1]
 	}
 
-	return resp.r_string('PONG')
+	return resp.r_ok()
 }
 
 fn (mut t TFDBSrv) command_hashdefine(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
-	if resp.get_redis_array_len(input) > 1 {
-		return resp.get_redis_array(input)[1]
+	if resp.get_redis_array_len(input) < 2 {
+		return resp.r_error("Invalid arguments")
 	}
 
-	return resp.r_string('PONG')
+	// let use two namespaces to achieve this easily:
+	//  - one namespace (hashnames) in userkey mode, which contains a key/value per name
+	//    to keep track of which names are in use or not
+	//  - another namespace (hashes) in sequential mode, which will create a unique id
+	//    on creation (and contains name as value)
+	//
+	// this allows easy check of existance and unique id generation easily
+
+	name := resp.get_array_value(input, 1)
+
+	t.client.send_expect_ok(["SELECT", "hashnames"]) or { panic(err) }
+
+	value := t.client.get(name) or {
+		// does not exists, we can create it
+		t.client.send_expect_str(["SET", name, name]) or { panic(err) }
+
+		// switch to hashes id namespace
+		t.client.send_expect_ok(["SELECT", "hashes"]) or { panic(err) }
+
+		// FIXME: does not support binary response
+		apply := t.client.send_expect_str(["SET", "", name]) or { panic(err) }
+		return resp.r_string(apply)
+	}
+
+	return resp.r_error("Name already exists")
 }
 
 fn (mut t TFDBSrv) command_groupget(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
