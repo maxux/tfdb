@@ -1,9 +1,16 @@
 module main
 
 import freeflowuniverse.crystallib.redisserver
+import freeflowuniverse.crystallib.redisclient
 import freeflowuniverse.crystallib.resp
 
-fn command_ping(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+[heap]
+struct TFDBSrv {
+mut:
+	client redisclient.Redis
+}
+
+fn (mut t TFDBSrv) command_ping(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
 	if resp.get_redis_array_len(input) > 1 {
 		return resp.get_redis_array(input)[1]
 	}
@@ -11,7 +18,23 @@ fn command_ping(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue 
 	return resp.r_string('PONG')
 }
 
-fn command_namedefine(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+fn (mut t TFDBSrv) command_namedefine(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+	if resp.get_redis_array_len(input) < 4 {
+		return resp.r_error("Invalid arguments")
+	}
+
+	name := resp.get_array_value(input, 1)
+	link := resp.get_array_value(input, 2)
+	dns := resp.get_array_value(input, 3)
+
+	if name.len < 12 {
+		return resp.r_error("Name needs to be minimum 12 bytes")
+	}
+
+	return resp.r_ok()
+}
+
+fn (mut t TFDBSrv) command_groupdefine(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
 	if resp.get_redis_array_len(input) > 1 {
 		return resp.get_redis_array(input)[1]
 	}
@@ -19,7 +42,7 @@ fn command_namedefine(input resp.RValue, mut _ redisserver.RedisInstance) resp.R
 	return resp.r_string('PONG')
 }
 
-fn command_groupdefine(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+fn (mut t TFDBSrv) command_hashdefine(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
 	if resp.get_redis_array_len(input) > 1 {
 		return resp.get_redis_array(input)[1]
 	}
@@ -27,7 +50,7 @@ fn command_groupdefine(input resp.RValue, mut _ redisserver.RedisInstance) resp.
 	return resp.r_string('PONG')
 }
 
-fn command_hashdefine(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+fn (mut t TFDBSrv) command_circleget(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
 	if resp.get_redis_array_len(input) > 1 {
 		return resp.get_redis_array(input)[1]
 	}
@@ -35,7 +58,7 @@ fn command_hashdefine(input resp.RValue, mut _ redisserver.RedisInstance) resp.R
 	return resp.r_string('PONG')
 }
 
-fn command_circleget(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+fn (mut t TFDBSrv) command_hashget(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
 	if resp.get_redis_array_len(input) > 1 {
 		return resp.get_redis_array(input)[1]
 	}
@@ -43,7 +66,7 @@ fn command_circleget(input resp.RValue, mut _ redisserver.RedisInstance) resp.RV
 	return resp.r_string('PONG')
 }
 
-fn command_hashget(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+fn (mut t TFDBSrv) command_hashdelete(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
 	if resp.get_redis_array_len(input) > 1 {
 		return resp.get_redis_array(input)[1]
 	}
@@ -51,7 +74,7 @@ fn command_hashget(input resp.RValue, mut _ redisserver.RedisInstance) resp.RVal
 	return resp.r_string('PONG')
 }
 
-fn command_hashdelete(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+fn (mut t TFDBSrv) command_hset(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
 	if resp.get_redis_array_len(input) > 1 {
 		return resp.get_redis_array(input)[1]
 	}
@@ -59,7 +82,7 @@ fn command_hashdelete(input resp.RValue, mut _ redisserver.RedisInstance) resp.R
 	return resp.r_string('PONG')
 }
 
-fn command_hset(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+fn (mut t TFDBSrv) command_hsecure(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
 	if resp.get_redis_array_len(input) > 1 {
 		return resp.get_redis_array(input)[1]
 	}
@@ -67,7 +90,7 @@ fn command_hset(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue 
 	return resp.r_string('PONG')
 }
 
-fn command_hsecure(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+fn (mut t TFDBSrv) command_hscan(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
 	if resp.get_redis_array_len(input) > 1 {
 		return resp.get_redis_array(input)[1]
 	}
@@ -75,7 +98,7 @@ fn command_hsecure(input resp.RValue, mut _ redisserver.RedisInstance) resp.RVal
 	return resp.r_string('PONG')
 }
 
-fn command_hscan(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+fn (mut t TFDBSrv) command_hlen(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
 	if resp.get_redis_array_len(input) > 1 {
 		return resp.get_redis_array(input)[1]
 	}
@@ -83,15 +106,7 @@ fn command_hscan(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue
 	return resp.r_string('PONG')
 }
 
-fn command_hlen(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
-	if resp.get_redis_array_len(input) > 1 {
-		return resp.get_redis_array(input)[1]
-	}
-
-	return resp.r_string('PONG')
-}
-
-fn command_hdel(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+fn (mut t TFDBSrv) command_hdel(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
 	if resp.get_redis_array_len(input) > 1 {
 		return resp.get_redis_array(input)[1]
 	}
@@ -108,65 +123,69 @@ fn main() {
 
 	mut main := &redisserver.RedisInstance{}
 
+	mut tfdb := TFDBSrv{}
+	tfdb.client = redisclient.get('127.0.0.1:9900')!
+	tfdb.client.ping()!
+
 	mut h := []redisserver.RedisHandler{}
 	h << redisserver.RedisHandler{
 		command: 'PING'
-		handler: command_ping
+		handler: tfdb.command_ping
 	}
 
 	h << redisserver.RedisHandler{
 		command: 'NAMEDEFINE'
-		handler: command_namedefine
+		handler: tfdb.command_namedefine
 	}
 
 	h << redisserver.RedisHandler{
 		command: 'GROUPDEFINE'
-		handler: command_groupdefine
+		handler: tfdb.command_groupdefine
 	}
 
 	h << redisserver.RedisHandler{
 		command: 'HASHDEFINE'
-		handler: command_hashdefine
+		handler: tfdb.command_hashdefine
 	}
 
 	h << redisserver.RedisHandler{
 		command: 'CIRCLEGET'
-		handler: command_circleget
+		handler: tfdb.command_circleget
 	}
 
 	h << redisserver.RedisHandler{
 		command: 'HASHGET'
-		handler: command_hashget
+		handler: tfdb.command_hashget
 	}
 
 	h << redisserver.RedisHandler{
 		command: 'HASHDELETE'
-		handler: command_hashdelete
+		handler: tfdb.command_hashdelete
 	}
 
 	h << redisserver.RedisHandler{
 		command: 'HSET'
-		handler: command_hset
+		handler: tfdb.command_hset
 	}
 
 	h << redisserver.RedisHandler{
 		command: 'HSECURE'
-		handler: command_hsecure
+		handler: tfdb.command_hsecure
 	}
 
 	h << redisserver.RedisHandler{
 		command: 'HSCAN'
-		handler: command_hscan
+		handler: tfdb.command_hscan
 	}
 
 	h << redisserver.RedisHandler{
 		command: 'HLEN'
-		handler: command_hlen
+		handler: tfdb.command_hlen
 	}
 
 	h << redisserver.RedisHandler{
 		command: 'HDEL'
-		handler: command_hdel
+		handler: tfdb.command_hdel
 	}
 
 
