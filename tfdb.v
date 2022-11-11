@@ -99,43 +99,72 @@ fn (mut t TFDBSrv) command_hashdelete(input resp.RValue, mut _ redisserver.Redis
 }
 
 fn (mut t TFDBSrv) command_hset(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
-	if resp.get_redis_array_len(input) > 1 {
-		return resp.get_redis_array(input)[1]
+	if resp.get_redis_array_len(input) < 4 {
+		return resp.r_error("Invalid arguments")
 	}
 
-	return resp.r_string('PONG')
+	key := resp.get_array_value(input, 1)
+	field := resp.get_array_value(input, 2)
+	data := resp.get_array_value(input, 3)
+
+	t.client.send_expect_ok(["SELECT", "hdata"]) or { panic(err) }
+	t.client.send_expect_str(["SET", "${key}.${field}", data]) or { panic(err) }
+
+	return resp.r_ok()
 }
 
 fn (mut t TFDBSrv) command_hsecure(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
-	if resp.get_redis_array_len(input) > 1 {
-		return resp.get_redis_array(input)[1]
+	if resp.get_redis_array_len(input) < 3 {
+		return resp.r_error("Invalid arguments")
 	}
 
-	return resp.r_string('PONG')
+	return resp.r_ok()
+}
+
+fn (mut t TFDBSrv) command_hget(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+	if resp.get_redis_array_len(input) < 3 {
+		return resp.r_error("Invalid arguments")
+	}
+
+	key := resp.get_array_value(input, 1)
+	field := resp.get_array_value(input, 2)
+
+	t.client.send_expect_ok(["SELECT", "hdata"]) or { panic(err) }
+	data := t.client.send_expect_str(["GET", "${key}.${field}"]) or { return resp.r_nil() }
+
+	return resp.r_string(data)
 }
 
 fn (mut t TFDBSrv) command_hscan(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
-	if resp.get_redis_array_len(input) > 1 {
-		return resp.get_redis_array(input)[1]
+	if resp.get_redis_array_len(input) < 3 {
+		return resp.r_error("Invalid arguments")
 	}
 
-	return resp.r_string('PONG')
+	return resp.r_ok()
 }
 
 fn (mut t TFDBSrv) command_hlen(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
-	if resp.get_redis_array_len(input) > 1 {
-		return resp.get_redis_array(input)[1]
+	if resp.get_redis_array_len(input) < 2 {
+		return resp.r_error("Invalid arguments")
 	}
 
-	return resp.r_string('PONG')
+	// FIXME: no idea how to implement that right now
+
+	return resp.r_ok()
 }
 
 fn (mut t TFDBSrv) command_hdel(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
-	if resp.get_redis_array_len(input) > 1 {
-		return resp.get_redis_array(input)[1]
+	if resp.get_redis_array_len(input) < 3 {
+		return resp.r_error("Invalid arguments")
 	}
 
-	return resp.r_string('PONG')
+	key := resp.get_array_value(input, 1)
+	field := resp.get_array_value(input, 2)
+
+	t.client.send_expect_ok(["SELECT", "hdata"]) or { panic(err) }
+	data := t.client.send_expect_str(["DEL", "${key}.${field}"]) or { return resp.r_nil() }
+
+	return resp.r_ok()
 }
 
 
@@ -195,6 +224,11 @@ fn main() {
 	h << redisserver.RedisHandler{
 		command: 'HSECURE'
 		handler: tfdb.command_hsecure
+	}
+
+	h << redisserver.RedisHandler{
+		command: 'HGET'
+		handler: tfdb.command_hget
 	}
 
 	h << redisserver.RedisHandler{
