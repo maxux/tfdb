@@ -50,7 +50,7 @@ fn (mut t TFDBSrv) command_hashdefine(input resp.RValue, mut _ redisserver.Redis
 	return resp.r_string('PONG')
 }
 
-fn (mut t TFDBSrv) command_circleget(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
+fn (mut t TFDBSrv) command_groupget(input resp.RValue, mut _ redisserver.RedisInstance) resp.RValue {
 	if resp.get_redis_array_len(input) > 1 {
 		return resp.get_redis_array(input)[1]
 	}
@@ -149,8 +149,8 @@ fn main() {
 	}
 
 	h << redisserver.RedisHandler{
-		command: 'CIRCLEGET'
-		handler: tfdb.command_circleget
+		command: 'GROUPGET'
+		handler: tfdb.command_groupget
 	}
 
 	h << redisserver.RedisHandler{
